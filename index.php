@@ -1,21 +1,5 @@
 <?php
 
-/**
- * Tony's php recipe book.
- *
- * Expects the library to be built already. Must be run with `-c php.ini` (it
- * just enables ffi). Also expects some environment variables to be set (see
- * directly below this comment).
- *
- * I have never written php in my life, this is terrible code and I apologize. I
- * knew it would be absolute gibberish, but I also figure that Tony would be
- * writing trash code too, no?
- *
- * It was fun though, php has a very different mental model of how web apps should
- * work than SPAs which were my first introduction to the web. Maybe I'll invest
- * more time into php, especially for static web projects.
- **/
-
 $RECIPE_LIB_PATH = $_ENV["RECIPE_SO"] ?? "../zig-out/lib/librecipe-book.so";
 $RECIPE_BOOK_PATH = $_ENV["RECIPE_BOOK_PATH"] ?? "recipes.json";
 
@@ -148,7 +132,10 @@ if ($method === "GET" && $route === "recipes") {
 
     $save_res = $ffi->recipe_book_save($book, $RECIPE_BOOK_PATH);
     if ($save_res !== 0) {
-        jsonResponse(["error" => "recipe_book_save failed", "code" => $save_res], 500);
+        jsonResponse(
+            ["error" => "recipe_book_save failed", "code" => $save_res],
+            500,
+        );
     }
 
     $ffi->recipe_book_close($book);
@@ -200,7 +187,10 @@ if ($method === "GET" && $route === "recipes") {
 
     $save_res = $ffi->recipe_book_save($book, $RECIPE_BOOK_PATH);
     if ($save_res !== 0) {
-        jsonResponse(["error" => "recipe_book_save failed", "code" => $save_res], 500);
+        jsonResponse(
+            ["error" => "recipe_book_save failed", "code" => $save_res],
+            500,
+        );
     }
 
     $ffi->recipe_book_close($book);
