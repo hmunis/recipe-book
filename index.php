@@ -41,7 +41,7 @@ function loadFfi()
 
         typedef struct RecipeIterator {
             const RecipeBook *book;
-            int next_id;
+            int recipe_num;
         } RecipeIterator;
 
         void recipes_quit(void);
@@ -53,7 +53,6 @@ function loadFfi()
 
         int recipe_create(RecipeBook *book, const char *name, const char *author,
                 const char *instructions, int *out_id);
-        void recipe_delete(RecipeBook *book, int recipe_id);
         int recipe_add_ingredient(RecipeBook *book, int recipe_id, const char *qty,
                 const char *name);
         int recipe_get(RecipeBook *book, int recipe_id, char *buf, size_t bufsz,
@@ -148,6 +147,10 @@ if ($method === "GET" && $route === "recipes") {
     }
 
     $save_res = $ffi->recipe_book_save($book, $RECIPE_BOOK_PATH);
+    if ($save_res !== 0) {
+        jsonResponse(["error" => "recipe_book_save failed", "code" => $save_res], 500);
+    }
+
     $ffi->recipe_book_close($book);
     $ffi->recipes_quit();
 
@@ -156,31 +159,54 @@ if ($method === "GET" && $route === "recipes") {
     global $RECIPE_BOOK_PATH;
 
     $data = json_decode(file_get_contents("php://input"), true);
+    if (!is_array($data)) {
+        jsonResponse(["error" => "invalid json"], 400);
+    }
 
     $ffi = loadFfi();
     $book = loadBook($ffi);
 
     $recipe_id = $ffi->new("int");
-    $ffi->recipe_create(
+    $res = $ffi->recipe_create(
         $book,
-        $data["name"],
-        $data["author"],
-        $data["instructions"],
+        $data["name"] ?? "",
+        $data["author"] ?? "",
+        $data["instructions"] ?? "",
         FFI::addr($recipe_id),
     );
+    if ($res !== 0) {
+        jsonResponse(["error" => "recipe_create failed", "code" => $res], 500);
+    }
 
-    foreach (
-        $data["ingredients"]
-        as ["quantity" => $quantity, "name" => $name]
-    ) {
-        $ffi->recipe_add_ingredient($book, $recipe_id->cdata, $quantity, $name);
+    foreach ($data["ingredients"] ?? [] as $ingredient) {
+        if (!is_array($ingredient)) {
+            continue;
+        }
+        $quantity = $ingredient["quantity"] ?? "";
+        $name = $ingredient["name"] ?? "";
+        $res = $ffi->recipe_add_ingredient(
+            $book,
+            $recipe_id->cdata,
+            $quantity,
+            $name,
+        );
+        if ($res !== 0) {
+            jsonResponse(
+                ["error" => "recipe_add_ingredient failed", "code" => $res],
+                500,
+            );
+        }
     }
 
     $save_res = $ffi->recipe_book_save($book, $RECIPE_BOOK_PATH);
+    if ($save_res !== 0) {
+        jsonResponse(["error" => "recipe_book_save failed", "code" => $save_res], 500);
+    }
+
     $ffi->recipe_book_close($book);
     $ffi->recipes_quit();
 
-    jsonResponse("");
+    jsonResponse(["id" => $recipe_id->cdata, "status" => "created"]);
 }
 
 // no api method, so return the page
